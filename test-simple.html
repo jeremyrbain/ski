@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ski Forecast Test</title>
+<style>
+body{
+  font-family: system-ui, sans-serif;
+  margin: 0;
+  padding: 20px;
+  background: #0f1115;
+  color: #f3f6ff;
+}
+.resort{
+  background: #1a2030;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+h2{ margin-top: 0; color: #55b3ff; }
+.loading{ color: #9aa5b5; }
+.day{
+  background: #232e42;
+  padding: 15px;
+  border-radius: 8px;
+  margin: 10px 0;
+}
+.temp{ font-size: 24px; font-weight: bold; }
+.snow{ color: #8fd3ff; font-weight: bold; }
+</style>
+</head>
+<body>
+<h1>⛷️ Colorado Ski Forecast</h1>
+<div id="app"></div>
+
+<script>
+console.log('Script starting...');
+
+const resorts = [
+  {name: "Vail", lat: 39.6403, lon: -106.3742, base: 8120, peak: 11570}
+];
+
+async function loadWeather() {
+  console.log('Loading weather...');
+  const app = document.getElementById('app');
+  
+  for (const resort of resorts) {
+    const div = document.createElement('div');
+    div.className = 'resort';
+    div.innerHTML = `<h2>${resort.name}</h2><p class="loading">Loading...</p>`;
+    app.appendChild(div);
+    
+    try {
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${resort.lat}&longitude=${resort.lon}&hourly=temperature_2m,snowfall&temperature_unit=fahrenheit&precipitation_unit=inch&timezone=auto&forecast_days=3`;
+      
+      console.log('Fetching:', url);
+      const response = await fetch(url);
+      console.log('Response:', response.status, response.ok);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('Data received:', data);
+      
+      // Group by day
+      const days = {};
+      data.hourly.time.forEach((time, i) => {
+        const day = time.split('T')[0];
+        if (!days[day]) days[day] = { temps: [], snow: 0 };
+        days[day].temps.push(data.hourly.temperature_2m[i]);
+        days[day].snow += data.hourly.snowfall[i] || 0;
+      });
+      
+      // Render
+      let html = `<h2>${resort.name}</h2><p>${resort.base}' - ${resort.peak}'</p>`;
+      
+      for (const [date, info] of Object.entries(days)) {
+        const avgTemp = Math.round(info.temps.reduce((a,b) => a+b, 0) / info.temps.length);
+        const dateObj = new Date(date + 'T12:00:00');
+        const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+        
+        html += `
+          <div class="day">
+            <strong>${dayName}</strong><br>
+            <span class="temp">${avgTemp}°F</span> | 
+            <span class="snow">❄️ ${info.snow.toFixed(1)}"</span>
+          </div>
+        `;
+      }
+      
+      div.innerHTML = html;
+      console.log(`${resort.name} loaded successfully`);
+      
+    } catch (err) {
+      console.error('Error loading', resort.name, err);
+      div.innerHTML = `<h2>${resort.name}</h2><p style="color: #ef4444;">Error: ${err.message}</p>`;
+    }
+  }
+}
+
+loadWeather();
+console.log('Script loaded');
+</script>
+</body>
+</html>
