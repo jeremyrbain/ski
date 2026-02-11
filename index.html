@@ -1,108 +1,700 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Ski Forecast Test</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+<title>Colorado Ski Forecast</title>
+<meta name="color-scheme" content="dark light">
 <style>
-body{
-  font-family: system-ui, sans-serif;
-  margin: 0;
-  padding: 20px;
-  background: #0f1115;
-  color: #f3f6ff;
-}
-.resort{
-  background: #1a2030;
-  border-radius: 12px;
-  padding: 20px;
-  margin-bottom: 20px;
-}
-h2{ margin-top: 0; color: #55b3ff; }
-.loading{ color: #9aa5b5; }
-.day{
-  background: #232e42;
-  padding: 15px;
-  border-radius: 8px;
-  margin: 10px 0;
-}
-.temp{ font-size: 24px; font-weight: bold; }
-.snow{ color: #8fd3ff; font-weight: bold; }
+  :root{
+    --bg:#0f1115; --panel:#1a2030; --card:#232e42; --ink:#f3f6ff; --muted:#9aa5b5;
+    --accent:#55b3ff; --snow:#8fd3ff; --sun:#ffd166; --good:#22c55e; --warn:#f59e0b; --bad:#ef4444;
+    --radius:16px;
+  }
+  @media (prefers-color-scheme: light) {
+    :root{ --bg:#f6f8fc; --panel:#ffffff; --card:#f1f5f9; --ink:#0c1222; --muted:#64748b; --accent:#0ea5e9; --snow:#0ea5e9; --sun:#f59e0b; }
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+  body{
+    margin:0; 
+    font:16px/1.5 -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+    background: var(--bg);
+    color:var(--ink);
+    padding-bottom:40px;
+  }
+  
+  /* Header */
+  header{
+    position:sticky; top:0; z-index:10;
+    background: var(--panel);
+    border-bottom:1px solid color-mix(in oklab, var(--muted) 20%, transparent);
+    padding:16px;
+  }
+  h1{
+    margin:0 0 8px 0; 
+    font-size:20px; 
+    font-weight:700;
+    line-height:1.3;
+  }
+  .subtitle{
+    color:var(--muted); 
+    font-size:13px; 
+    line-height:1.4;
+    margin-bottom:12px;
+  }
+  
+  /* Controls */
+  .controls{
+    display:flex; 
+    gap:8px; 
+    flex-wrap:wrap; 
+    align-items:center;
+  }
+  .chip{
+    border:1px solid var(--accent);
+    color:var(--accent); 
+    background:color-mix(in oklab, var(--accent) 10%, transparent);
+    border-radius:20px; 
+    padding:8px 14px;
+    font-size:14px;
+    font-weight:500;
+    cursor:pointer;
+    white-space:nowrap;
+    -webkit-tap-highlight-color: rgba(85,179,255,0.1);
+  }
+  .chip:active{
+    background:color-mix(in oklab, var(--accent) 20%, transparent);
+  }
+  select.chip{
+    padding-right:28px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2355b3ff' d='M6 8L2 4h8z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    appearance:none;
+  }
+  .status{
+    color:var(--muted); 
+    font-size:12px;
+    width:100%;
+    margin-top:4px;
+  }
+  
+  /* Main content */
+  .wrap{ 
+    padding:16px; 
+    display:grid; 
+    gap:20px; 
+  }
+  
+  /* Resort card */
+  .resort{
+    background: var(--panel);
+    border:1px solid color-mix(in oklab, var(--muted) 15%, transparent);
+    border-radius: var(--radius);
+    overflow:hidden;
+  }
+  
+  .resort-head{
+    padding:16px;
+    background: color-mix(in oklab, var(--card) 60%, var(--panel));
+    border-bottom:1px solid color-mix(in oklab, var(--muted) 15%, transparent);
+  }
+  .resort-name{
+    font-size:20px;
+    font-weight:700;
+    margin-bottom:6px;
+  }
+  .resort-elev{
+    display:inline-block;
+    background:var(--accent);
+    color:#000;
+    padding:4px 10px;
+    border-radius:12px;
+    font-size:13px;
+    font-weight:700;
+    margin-bottom:8px;
+  }
+  .resort-info{
+    color:var(--muted);
+    font-size:13px;
+  }
+  
+  /* Day selector - horizontal scroll */
+  .day-selector{
+    display:flex;
+    overflow-x:auto;
+    overflow-y:hidden;
+    gap:12px;
+    padding:16px;
+    scroll-snap-type:x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .day-selector::-webkit-scrollbar{
+    display:none;
+  }
+  
+  .day-tab{
+    min-width:90px;
+    padding:12px 16px;
+    background:var(--card);
+    border:2px solid transparent;
+    border-radius:12px;
+    text-align:center;
+    cursor:pointer;
+    scroll-snap-align:start;
+    flex-shrink:0;
+  }
+  .day-tab.active{
+    border-color:var(--accent);
+    background:color-mix(in oklab, var(--accent) 15%, var(--card));
+  }
+  .day-tab .day-name{
+    font-weight:700;
+    font-size:15px;
+    margin-bottom:2px;
+  }
+  .day-tab .day-date{
+    font-size:13px;
+    color:var(--muted);
+  }
+  .day-tab .day-snow{
+    font-size:13px;
+    color:var(--snow);
+    font-weight:600;
+    margin-top:4px;
+  }
+  
+  /* Forecast grid */
+  .forecast-grid{
+    padding:16px;
+    display:none;
+  }
+  .forecast-grid.active{
+    display:grid;
+    gap:16px;
+  }
+  
+  /* Period card (AM/PM/Overnight) */
+  .period-card{
+    background:var(--card);
+    border-radius:14px;
+    padding:16px;
+    border:1px solid color-mix(in oklab, var(--muted) 12%, transparent);
+  }
+  .period-card.highlight-snow{
+    border-color:var(--snow);
+    box-shadow: 0 0 0 1px var(--snow), 0 0 20px rgba(143,211,255,.15) inset;
+  }
+  .period-card.highlight-wind{
+    border-color:var(--warn);
+    box-shadow: 0 0 0 1px var(--warn), 0 0 20px rgba(245,158,11,.12) inset;
+  }
+  
+  .period-title{
+    font-size:15px;
+    font-weight:700;
+    color:var(--accent);
+    margin-bottom:14px;
+    padding-bottom:10px;
+    border-bottom:1px solid color-mix(in oklab, var(--muted) 12%, transparent);
+  }
+  
+  /* Elevation rows */
+  .elev-row{
+    display:grid;
+    grid-template-columns: 50px 1fr;
+    gap:14px;
+    padding:12px 0;
+    border-bottom:1px dashed color-mix(in oklab, var(--muted) 10%, transparent);
+  }
+  .elev-row:last-child{
+    border-bottom:none;
+    padding-bottom:0;
+  }
+  .elev-row:first-child{
+    padding-top:0;
+  }
+  
+  .elev-label{
+    font-size:13px;
+    font-weight:700;
+    color:var(--muted);
+    padding-top:4px;
+  }
+  
+  .elev-data{
+    display:grid;
+    gap:8px;
+  }
+  
+  .weather-main{
+    display:flex;
+    align-items:center;
+    gap:12px;
+  }
+  .weather-icon{
+    font-size:32px;
+    line-height:1;
+  }
+  .temp-display{
+    font-size:26px;
+    font-weight:700;
+  }
+  
+  .weather-details{
+    display:flex;
+    gap:16px;
+    font-size:14px;
+    flex-wrap:wrap;
+  }
+  .detail-item{
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .snow-amt{
+    color:var(--snow);
+    font-weight:700;
+    font-size:15px;
+  }
+  .wind-display{
+    color:var(--muted);
+  }
+  .wind-dir{
+    color:var(--ink);
+    font-weight:600;
+  }
+  .arrow{
+    display:inline-block;
+    transform-origin:50% 60%;
+    font-size:16px;
+  }
+  
+  /* Loading states */
+  .loading, .error{ 
+    padding:24px; 
+    color:var(--muted); 
+    font-size:15px;
+    text-align:center;
+  }
+  
+  /* Modals */
+  .modal{ 
+    position:fixed; 
+    inset:0; 
+    display:none; 
+    align-items:center; 
+    justify-content:center; 
+    background:rgba(0,0,0,.7); 
+    z-index:100;
+    padding:16px;
+  }
+  .modal.open{ display:flex; }
+  
+  .modal-content{
+    background:var(--panel);
+    border-radius:16px;
+    max-width:600px;
+    width:100%;
+    max-height:85vh;
+    overflow:hidden;
+    display:flex;
+    flex-direction:column;
+  }
+  
+  .modal-header{
+    padding:16px;
+    border-bottom:1px solid color-mix(in oklab, var(--muted) 15%, transparent);
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+  }
+  .modal-title{
+    font-size:18px;
+    font-weight:700;
+  }
+  .modal-close{
+    background:var(--accent);
+    color:#000;
+    border:none;
+    padding:8px 16px;
+    border-radius:20px;
+    font-size:14px;
+    font-weight:600;
+    cursor:pointer;
+  }
+  
+  .modal-body{
+    padding:16px;
+    overflow-y:auto;
+    flex:1;
+  }
+  
+  /* Utility */
+  .text-muted{ color:var(--muted); }
+  .text-accent{ color:var(--accent); }
+  .mb-8{ margin-bottom:8px; }
 </style>
 </head>
 <body>
-<h1>⛷️ Colorado Ski Forecast</h1>
-<div id="app"></div>
+<header>
+  <h1>⛷️ Colorado Ski Forecast</h1>
+  <div class="subtitle">
+    10-day forecast • Base / Mid / Peak elevations
+  </div>
+  <div class="controls">
+    <select id="modelSel" class="chip">
+      <option value="best">Best Model</option>
+      <option value="ecmwf">ECMWF</option>
+      <option value="gfs">GFS</option>
+      <option value="gem">GEM</option>
+    </select>
+    <button class="chip" id="toggleDays">16-day</button>
+    <button class="chip" id="toggleHi">Highlights On</button>
+  </div>
+  <div class="status" id="asof"></div>
+</header>
+
+<main class="wrap" id="root"></main>
 
 <script>
-console.log('Script starting...');
-
 const resorts = [
-  {name: "Vail", lat: 39.6403, lon: -106.3742, base: 8120, peak: 11570}
+  {name:"Vail", lat:39.6403, lon:-106.3742, elev:{base:8120, mid:10200, peak:11570}},
+  {name:"Beaver Creek", lat:39.6042, lon:-106.5165, elev:{base:8100, mid:9840, peak:11440}},
+  {name:"Copper Mountain", lat:39.5019, lon:-106.1506, elev:{base:9712, mid:11000, peak:12313}},
+  {name:"Keystone", lat:39.6042, lon:-105.9342, elev:{base:9280, mid:11000, peak:12408}},
+  {name:"Breckenridge", lat:39.4817, lon:-106.0384, elev:{base:9600, mid:11000, peak:12998}}
 ];
 
-async function loadWeather() {
-  console.log('Loading weather...');
-  const app = document.getElementById('app');
+let DAYS = 10;
+let MODEL = "best";
+let HIGHLIGHTS = true;
+let currentResortData = {};
+
+const modelSel = document.getElementById("modelSel");
+const toggleDaysBtn = document.getElementById("toggleDays");
+const toggleHiBtn = document.getElementById("toggleHi");
+const asof = document.getElementById("asof");
+
+function omURL(lat,lon,ft,mod){
+  const m = ft*0.3048;
+  const base = mod==="ecmwf"? "https://api.open-meteo.com/v1/ecmwf"
+             : mod==="gfs"? "https://api.open-meteo.com/v1/gfs"
+             : mod==="gem"? "https://api.open-meteo.com/v1/gem"
+             : "https://api.open-meteo.com/v1/forecast";
+  const params = new URLSearchParams({
+    latitude: lat, longitude: lon, elevation: Math.round(m),
+    hourly: "temperature_2m,snowfall,wind_speed_10m,wind_direction_10m,weather_code",
+    temperature_unit: "fahrenheit", wind_speed_unit: "mph", precipitation_unit: "inch",
+    timezone: "auto", forecast_days: DAYS
+  });
+  return base+"?"+params;
+}
+
+async function fetchHourly({lat,lon,ft}){
+  const url = omURL(lat,lon,ft,MODEL);
+  console.log('Fetching weather data:', url);
   
-  for (const resort of resorts) {
-    const div = document.createElement('div');
-    div.className = 'resort';
-    div.innerHTML = `<h2>${resort.name}</h2><p class="loading">Loading...</p>`;
-    app.appendChild(div);
+  try {
+    const res = await fetch(url);
+    console.log('Fetch response status:', res.status, 'OK:', res.ok);
     
-    try {
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=${resort.lat}&longitude=${resort.lon}&hourly=temperature_2m,snowfall&temperature_unit=fahrenheit&precipitation_unit=inch&timezone=auto&forecast_days=3`;
-      
-      console.log('Fetching:', url);
-      const response = await fetch(url);
-      console.log('Response:', response.status, response.ok);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-      
-      const data = await response.json();
-      console.log('Data received:', data);
-      
-      // Group by day
-      const days = {};
-      data.hourly.time.forEach((time, i) => {
-        const day = time.split('T')[0];
-        if (!days[day]) days[day] = { temps: [], snow: 0 };
-        days[day].temps.push(data.hourly.temperature_2m[i]);
-        days[day].snow += data.hourly.snowfall[i] || 0;
-      });
-      
-      // Render
-      let html = `<h2>${resort.name}</h2><p>${resort.base}' - ${resort.peak}'</p>`;
-      
-      for (const [date, info] of Object.entries(days)) {
-        const avgTemp = Math.round(info.temps.reduce((a,b) => a+b, 0) / info.temps.length);
-        const dateObj = new Date(date + 'T12:00:00');
-        const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-        
-        html += `
-          <div class="day">
-            <strong>${dayName}</strong><br>
-            <span class="temp">${avgTemp}°F</span> | 
-            <span class="snow">❄️ ${info.snow.toFixed(1)}"</span>
-          </div>
-        `;
-      }
-      
-      div.innerHTML = html;
-      console.log(`${resort.name} loaded successfully`);
-      
-    } catch (err) {
-      console.error('Error loading', resort.name, err);
-      div.innerHTML = `<h2>${resort.name}</h2><p style="color: #ef4444;">Error: ${err.message}</p>`;
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}: ${res.statusText}`);
     }
+    
+    const data = await res.json();
+    console.log('Fetch SUCCESS - got data:', data);
+    
+    const h = data.hourly;
+    if (!h || !h.time) {
+      throw new Error('Invalid data structure from API');
+    }
+    
+    const hourlyData = h.time.map((t,i)=>({
+      time: t,
+      temp: h.temperature_2m[i],
+      snow: h.snowfall[i],
+      wspd: h.wind_speed_10m[i],
+      wdir: h.wind_direction_10m[i],
+      code: h.weather_code[i]
+    }));
+    
+    console.log('Parsed hourly data, length:', hourlyData.length);
+    return hourlyData;
+  } catch (err) {
+    console.error('Fetch error:', err);
+    throw new Error(`Failed to fetch weather: ${err.message}`);
   }
 }
 
-loadWeather();
-console.log('Script loaded');
+function aggregateByPeriods(hourly){
+  const periods = {};
+  for(const h of hourly){
+    const dt = new Date(h.time);
+    const hr = dt.getHours();
+    const day = h.time.slice(0,10);
+    if(!periods[day]) periods[day] = {am:[], pm:[], ov:[]};
+    if(hr>=6 && hr<12) periods[day].am.push(h);
+    else if(hr>=12 && hr<18) periods[day].pm.push(h);
+    else periods[day].ov.push(h);
+  }
+  const out = {};
+  for(const [d,p] of Object.entries(periods)){
+    out[d] = {
+      am: p.am.length? summarize(p.am) : null,
+      pm: p.pm.length? summarize(p.pm) : null,
+      ov: p.ov.length? summarize(p.ov) : null
+    };
+  }
+  return out;
+}
+
+function summarize(arr){
+  const snow = arr.reduce((s,h)=>s+h.snow,0);
+  const temps = arr.map(h=>h.temp);
+  const avgT = temps.reduce((s,v)=>s+v,0)/temps.length;
+  const winds = arr.map(h=>h.wspd);
+  const avgW = winds.reduce((s,v)=>s+v,0)/winds.length;
+  const maxW = Math.max(...winds);
+  const wdirs = arr.map(h=>h.wdir).filter(d=>d!=null);
+  const avgDir = wdirs.length? wdirs.reduce((s,v)=>s+v,0)/wdirs.length : null;
+  const codes = arr.map(h=>h.code);
+  const mostCode = codes.sort((a,b)=> codes.filter(v=>v===a).length - codes.filter(v=>v===b).length).pop();
+  return { snow, avgT, avgW, maxW, avgDir, code:mostCode };
+}
+
+function mergeLevels(days, aggB, aggM, aggP){
+  const out = {};
+  for(const d of days){
+    out[d] = { base: aggB[d], mid: aggM[d], peak: aggP[d] };
+  }
+  return out;
+}
+
+function weatherIcon(code){
+  if(!code) return "☁️";
+  if(code<=3) return code===0?"☀️" : code===1?"🌤️" : code===2?"⛅":"☁️";
+  if(code>=71 && code<=77) return "❄️";
+  if(code>=80 && code<=99) return "🌧️";
+  if(code>=51 && code<=67) return "🌦️";
+  return "☁️";
+}
+
+function windDir(deg){
+  if(deg==null) return "—";
+  const dirs = ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"];
+  const idx = Math.round((deg%360)/22.5)%16;
+  return dirs[idx];
+}
+
+function renderResort(resort, data, midFt){
+  const root = document.getElementById("root");
+  const sec = document.createElement("section");
+  sec.className = "resort";
+  const resortId = resort.name.replace(/\s+/g, '-').toLowerCase();
+  
+  const days = Object.keys(data).sort();
+  
+  // Store data for this resort
+  currentResortData[resortId] = {data, days, midFt};
+  
+  // Header
+  const head = document.createElement("div");
+  head.className = "resort-head";
+  head.innerHTML = `
+    <div class="resort-name">${resort.name}</div>
+    <div class="resort-elev">${resort.elev.base}' – ${resort.elev.peak}'</div>
+    <div class="resort-info">Base ${resort.elev.base}' • Mid ${midFt}' • Peak ${resort.elev.peak}'</div>
+  `;
+  sec.appendChild(head);
+  
+  // Day selector
+  const selector = document.createElement("div");
+  selector.className = "day-selector";
+  selector.id = `selector-${resortId}`;
+  
+  days.forEach((day, idx) => {
+    const d = data[day];
+    const dateObj = new Date(day+"T12:00:00");
+    const dayName = dateObj.toLocaleDateString(undefined, {weekday:"short"});
+    const dayDate = dateObj.toLocaleDateString(undefined, {month:"short", day:"numeric"});
+    
+    const totalSnow = ((d.base?.am?.snow||0)+(d.base?.pm?.snow||0)+(d.base?.ov?.snow||0) +
+                       (d.mid?.am?.snow||0)+(d.mid?.pm?.snow||0)+(d.mid?.ov?.snow||0) +
+                       (d.peak?.am?.snow||0)+(d.peak?.pm?.snow||0)+(d.peak?.ov?.snow||0))/3;
+    
+    const tab = document.createElement("div");
+    tab.className = `day-tab ${idx===0?'active':''}`;
+    tab.dataset.day = day;
+    tab.dataset.resort = resortId;
+    tab.innerHTML = `
+      <div class="day-name">${dayName}</div>
+      <div class="day-date">${dayDate}</div>
+      ${totalSnow > 0 ? `<div class="day-snow">❄️ ${totalSnow.toFixed(1)}"</div>` : ''}
+    `;
+    tab.onclick = () => selectDay(resortId, day);
+    selector.appendChild(tab);
+  });
+  sec.appendChild(selector);
+  
+  // Forecast grids (one per day)
+  days.forEach((day, idx) => {
+    const grid = document.createElement("div");
+    grid.className = `forecast-grid ${idx===0?'active':''}`;
+    grid.id = `grid-${resortId}-${day}`;
+    grid.dataset.day = day;
+    
+    const d = data[day];
+    
+    // Render each period
+    for(const [key, label] of [["am","Morning (6am-12pm)"], ["pm","Afternoon (12pm-6pm)"], ["ov","Overnight (6pm-6am)"]]) {
+      const card = document.createElement("div");
+      card.className = "period-card";
+      
+      // Highlights
+      const midSnow = d.mid?.[key]?.snow || 0;
+      const midWind = d.mid?.[key]?.maxW || 0;
+      if(HIGHLIGHTS){
+        if(midSnow>=3) card.classList.add("highlight-snow");
+        if(midWind>=35) card.classList.add("highlight-wind");
+      }
+      
+      const title = document.createElement("div");
+      title.className = "period-title";
+      title.textContent = label;
+      card.appendChild(title);
+      
+      // Elevation rows
+      for(const [lk, lt, lf] of [["base","BASE", resort.elev.base], ["mid","MID", midFt], ["peak","PEAK", resort.elev.peak]]) {
+        const row = document.createElement("div");
+        row.className = "elev-row";
+        
+        const p = d[lk]?.[key];
+        if(!p){
+          row.innerHTML = `
+            <div class="elev-label">${lt}<br>${lf}'</div>
+            <div class="elev-data"><span class="text-muted">No data</span></div>
+          `;
+        } else {
+          const icon = weatherIcon(p.code);
+          const snowStr = p.snow>0? `${p.snow.toFixed(1)}"` : "0";
+          const dir = windDir(p.avgDir);
+          const arrow = p.avgDir!=null? `<span class="arrow" style="transform:rotate(${p.avgDir}deg)">↓</span>` : "";
+          
+          row.innerHTML = `
+            <div class="elev-label">${lt}<br>${lf}'</div>
+            <div class="elev-data">
+              <div class="weather-main">
+                <span class="weather-icon">${icon}</span>
+                <span class="temp-display">${Math.round(p.avgT)}°</span>
+              </div>
+              <div class="weather-details">
+                <div class="detail-item">
+                  <span>❄️</span>
+                  <span class="snow-amt">${snowStr}</span>
+                </div>
+                <div class="detail-item">
+                  <span>💨</span>
+                  <span class="wind-display">${arrow} <span class="wind-dir">${dir}</span> ${Math.round(p.avgW)} mph</span>
+                </div>
+              </div>
+            </div>
+          `;
+        }
+        card.appendChild(row);
+      }
+      
+      grid.appendChild(card);
+    }
+    
+    sec.appendChild(grid);
+  });
+  
+  root.appendChild(sec);
+}
+
+function selectDay(resortId, day){
+  // Update tabs
+  const tabs = document.querySelectorAll(`#selector-${resortId} .day-tab`);
+  tabs.forEach(tab => {
+    tab.classList.toggle('active', tab.dataset.day === day);
+  });
+  
+  // Update grids
+  const grids = document.querySelectorAll(`.forecast-grid[id^="grid-${resortId}"]`);
+  grids.forEach(grid => {
+    grid.classList.toggle('active', grid.dataset.day === day);
+  });
+}
+
+toggleDaysBtn.onclick = ()=>{
+  DAYS = (DAYS===10?16:10);
+  toggleDaysBtn.textContent = DAYS===16? "10-day":"16-day";
+  load();
+};
+
+toggleHiBtn.onclick = ()=>{
+  HIGHLIGHTS = !HIGHLIGHTS;
+  toggleHiBtn.textContent = HIGHLIGHTS? "Highlights On":"Highlights Off";
+  load();
+};
+
+modelSel.onchange = ()=>{ MODEL = modelSel.value; load(); };
+
+async function load(){
+  console.log('=== LOAD STARTED ===');
+  console.log('DAYS:', DAYS, 'MODEL:', MODEL, 'HIGHLIGHTS:', HIGHLIGHTS);
+  
+  const root = document.getElementById("root");
+  root.innerHTML = "";
+  asof.textContent = "Loading...";
+  currentResortData = {};
+
+  for(const r of resorts){
+    console.log('Loading resort:', r.name);
+    const midFt = r.elev.mid ?? Math.round((r.elev.base + r.elev.peak)/2);
+    const placeholder = document.createElement("section");
+    placeholder.className = "resort";
+    placeholder.innerHTML = `<div class="loading">Loading ${r.name}...</div>`;
+    root.appendChild(placeholder);
+
+    try{
+      console.log(`Fetching 3 elevations for ${r.name}...`);
+      const [hb, hm, hp] = await Promise.all([
+        fetchHourly({lat:r.lat, lon:r.lon, ft:r.elev.base}),
+        fetchHourly({lat:r.lat, lon:r.lon, ft:midFt}),
+        fetchHourly({lat:r.lat, lon:r.lon, ft:r.elev.peak})
+      ]);
+      console.log(`${r.name} - Got all 3 elevations, aggregating...`);
+      
+      const aggB = aggregateByPeriods(hb), aggM = aggregateByPeriods(hm), aggP = aggregateByPeriods(hp);
+      const days = Object.keys(aggM).sort();
+      const merged = mergeLevels(days, aggB, aggM, aggP);
+      
+      console.log(`${r.name} - Rendering with ${days.length} days...`);
+      root.removeChild(placeholder);
+      renderResort(r, merged, midFt);
+      console.log(`${r.name} - COMPLETE`);
+    }catch(err){
+      console.error('Load error for', r.name, ':', err);
+      placeholder.innerHTML = `
+        <div class="error">
+          <strong>Couldn't load ${r.name}</strong><br>
+          <small style="color:var(--muted); margin-top:8px; display:block">${err.message}</small>
+          <small style="color:var(--muted); margin-top:8px; display:block">
+            Open browser console (Settings → More Tools → Developer Tools) for more details
+          </small>
+        </div>
+      `;
+    }
+  }
+  asof.textContent = "Updated " + new Date().toLocaleTimeString();
+  console.log('=== LOAD COMPLETE ===');
+}
+
+load();
 </script>
 </body>
 </html>
